@@ -1,60 +1,101 @@
-import { Request, Response } from "express";
+import { Context } from "koa";
 import Movie from "../models/Movie.js";
 
-export const getMovies = async (req: Request, res: Response) => {
-  const { page = 1, limit = 10 } = req.query;
-  const skip = (Number(page) - 1) * Number(limit);
+export const getMovies = async (ctx: Context) => {
+	const { page = 1, limit = 10 } = ctx.query;
+	const skip = (Number(page) - 1) * Number(limit);
 
-  try {
-    const movies = await Movie.find().skip(skip).limit(Number(limit));
-    res.status(200).json(movies);
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
-  }
+	try {
+		const movies = await Movie.find().skip(skip).limit(Number(limit));
+		ctx.status = 200;
+		ctx.body = movies;
+	} catch (err: any) {
+		ctx.status = 500;
+		ctx.body = { message: err.message };
+	}
 };
 
-export const getMovie = async (req: Request, res: Response) => {
-  const { id } = req.params;
+export const getMovie = async (ctx: Context) => {
+	const { id } = ctx.params;
 
-  try {
-    const movie = await Movie.findById(id);
-    res.status(200).json(movie);
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
-  }
+	try {
+		const movie = await Movie.findById(id).populate("reviews").exec();
+
+		if (movie) {
+			ctx.status = 200;
+			ctx.body = movie;
+		} else {
+			ctx.status = 404;
+			ctx.body = { message: "Movie not found" };
+		}
+	} catch (err: any) {
+		ctx.status = 500;
+		ctx.body = { message: err.message };
+	}
 };
 
-export const createMovie = async (req: Request, res: Response) => {
-  const movie = new Movie(req.body);
+export const createMovie = async (ctx: Context) => {
+	const { title, year, genre, actors } = ctx.request.body as {
+		title: string;
+		year: number;
+		genre: string;
+		actors: string[];
+	};
 
-  try {
-    const newMovie = await movie.save();
-    res.status(201).json(newMovie);
-  } catch (err: any) {
-    res.status(400).json({ message: err.message });
-  }
+	try {
+		const movie = new Movie({ title, year, genre, actors });
+		await movie.save();
+		ctx.status = 201;
+		ctx.body = movie;
+	} catch (err: any) {
+		ctx.status = 500;
+		ctx.body = { message: err.message };
+	}
 };
 
-export const updateMovie = async (req: Request, res: Response) => {
-  const { id } = req.params;
+export const updateMovie = async (ctx: Context) => {
+	const { id } = ctx.params;
+	const { title, year, genre, actors } = ctx.request.body as {
+		title: string;
+		year: number;
+		genre: string;
+		actors: string[];
+	};
 
-  try {
-    const updatedMovie = await Movie.findByIdAndUpdate(id, req.body, {
-      new: true,
-    });
-    res.status(200).json(updatedMovie);
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
-  }
+	try {
+		const movie = await Movie.findByIdAndUpdate(
+			id,
+			{ title, year, genre, actors },
+			{ new: true }
+		);
+
+		if (movie) {
+			ctx.status = 200;
+			ctx.body = movie;
+		} else {
+			ctx.status = 404;
+			ctx.body = { message: "Movie not found" };
+		}
+	} catch (err: any) {
+		ctx.status = 500;
+		ctx.body = { message: err.message };
+	}
 };
 
-export const deleteMovie = async (req: Request, res: Response) => {
-  const { id } = req.params;
+export const deleteMovie = async (ctx: Context) => {
+	const { id } = ctx.params;
 
-  try {
-    await Movie.findByIdAndDelete(id);
-    res.status(204).send();
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
-  }
+	try {
+		const movie = await Movie.findByIdAndDelete(id);
+
+		if (movie) {
+			ctx.status = 204;
+		} else {
+			ctx.status = 404;
+			ctx.body = { message: "Movie not found" };
+		}
+	} catch (err: any) {
+		ctx.status = 500;
+		ctx.body = { message: err.message };
+	}
 };

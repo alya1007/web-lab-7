@@ -1,20 +1,20 @@
-import { Request, Response, NextFunction } from "express";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import { Context, Next } from "koa";
+import jwt from "jsonwebtoken";
 
-const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.header("Authorization")?.split(" ")[1];
+const authenticateJWT = async (ctx: Context, next: Next) => {
+	const token = ctx.headers.authorization?.split(" ")[1];
 
-  if (token) {
-    jwt.verify(token, process.env.JWT_SECRET!, (err, user) => {
-      if (err) {
-        return res.sendStatus(403);
-      }
-      req.user = user as string | JwtPayload;
-      next();
-    });
-  } else {
-    res.sendStatus(401);
-  }
+	if (token) {
+		try {
+			const user = jwt.verify(token, process.env.JWT_SECRET!);
+			ctx.state.user = user;
+			await next();
+		} catch (err) {
+			ctx.status = 403;
+		}
+	} else {
+		ctx.status = 401;
+	}
 };
 
 export default authenticateJWT;

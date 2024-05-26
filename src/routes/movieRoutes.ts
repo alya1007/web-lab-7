@@ -1,8 +1,8 @@
-import { Router } from "express";
+import Router from "koa-router";
 import { getMovies } from "../controllers/MovieController.js";
 import authenticateJWT from "../middleware/auth.js";
 
-const router = Router();
+const router = new Router();
 
 router.get("/movies", authenticateJWT, getMovies);
 router.get("/movies/:id", authenticateJWT, getMovies);
